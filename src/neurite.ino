@@ -1200,7 +1200,7 @@ void loop()
  */
 
 #ifdef NEURITE_ENABLE_USER
-#define USER_LOOP_INTERVAL 1000
+#define USER_LOOP_INTERVAL 100
 
 Servo myservo;
 static bool b_user_loop_run = true;
@@ -1220,11 +1220,10 @@ static inline void update_user_state(int st)
 void neurite_user_worker(void)
 {
 	/* add user stuff here */
-#if 0
 	struct neurite_data_s *nd = &g_nd;
 	static int adc_prev = 0;
 	int adc = analogRead(A0);
-	if (abs(adc - adc_prev) > 50) {
+	if (abs(adc - adc_prev) > 10) {
 		adc_prev = adc;
 		char buf[32];
 		__bzero(buf, sizeof(buf));
@@ -1232,7 +1231,6 @@ void neurite_user_worker(void)
 		if (nd->mqtt_connected)
 			mqtt_cli.publish(nd->cfg.topic_to, (const char *)buf);
 	}
-#endif
 }
 
 void neurite_user_loop(void)
@@ -1277,6 +1275,7 @@ void neurite_user_setup(void)
 /* called once on mqtt message received */
 void neurite_user_mqtt(char *topic, byte *payload, unsigned int length)
 {
+#if 0
 	struct neurite_data_s *nd = &g_nd;
 	if (strncmp(topic, nd->topic_private, strlen(nd->topic_private) - 2) == 0) {
 		char *subtopic = topic + strlen(nd->topic_private) - 2;
@@ -1331,6 +1330,7 @@ void neurite_user_mqtt(char *topic, byte *payload, unsigned int length)
 	} else {
 	}
 	free(msg);
+#endif
 }
 
 /* time_ms: the time delta in ms of button press/release cycle. */
