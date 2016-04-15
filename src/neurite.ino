@@ -43,7 +43,6 @@
 #include <Ticker.h>
 #include <ArduinoJson.h>
 #include "FS.h"
-#include <Servo.h>
 
 extern "C" {
 #include "osapi.h"
@@ -101,7 +100,6 @@ static bool b_cfg_ready;
 #ifdef NEURITE_ENABLE_WIFIMULTI
 ESP8266WiFiMulti WiFiMulti;
 #endif
-Ticker ticker_worker;
 Ticker ticker_led;
 Ticker ticker_cmd;
 Ticker ticker_mon;
@@ -459,17 +457,6 @@ static void ticker_monitor_task(struct neurite_data_s *nd)
 	}
 }
 
-/* FIXME is this necessary? */
-static void ticker_worker_task(void)
-{
-#if 0
-	struct neurite_data_s *nd = &g_nd;
-	char tmp[64];
-	sprintf(tmp, "%s time: %d ms", nd->uid, millis());
-	mqtt_cli.publish(nd->cfg.topic_to, tmp);
-#endif
-}
-
 static void button_release_handler(struct neurite_data_s *nd, int dts)
 {
 	log_dbg("button pressed for %d ms\n\r", dts);
@@ -534,15 +521,6 @@ inline void start_ticker_mon(struct neurite_data_s *nd)
 {
 	stop_ticker_mon(nd);
 	ticker_mon.attach_ms(100, ticker_monitor_task, nd);
-}
-inline void stop_ticker_worker(struct neurite_data_s *nd)
-{
-	ticker_worker.detach();
-}
-inline void start_ticker_worker(struct neurite_data_s *nd)
-{
-	stop_ticker_worker(nd);
-	ticker_worker.attach(1, ticker_worker_task);
 }
 inline void stop_ticker_but(struct neurite_data_s *nd)
 {
@@ -619,7 +597,6 @@ static void reboot(struct neurite_data_s *nd)
 	log_info("rebooting...\n\r");
 	stop_ticker_but(nd);
 	stop_ticker_mon(nd);
-	stop_ticker_worker(nd);
 	stop_ticker_led(nd);
 	stop_ticker_cmd(nd);
 	ESP.restart();
@@ -1098,7 +1075,6 @@ inline void neurite_worker(void)
 			mqtt_cli.publish(nd->cfg.topic_to, (const char *)payload_buf);
 
 			start_ticker_led_breath(nd);
-			//start_ticker_worker(nd);
 			start_ticker_mon(nd);
 			CMD_SERIAL.println(FPSTR(STR_READY));
 			log_dbg("heap free: %d\n\r", ESP.getFreeHeap());
@@ -1202,7 +1178,6 @@ void loop()
 #ifdef NEURITE_ENABLE_USER
 #define USER_LOOP_INTERVAL 100
 
-Servo myservo;
 static bool b_user_loop_run = true;
 
 enum {
@@ -1259,7 +1234,6 @@ void neurite_user_loop(void)
 void neurite_user_hold(void)
 {
 	log_dbg("\n\r");
-	myservo.detach();
 	update_user_state(USER_ST_0);
 }
 
@@ -1269,13 +1243,11 @@ void neurite_user_setup(void)
 	log_dbg("\n\r");
 	pinMode(14, OUTPUT);
 	analogWrite(14, 1023);
-	myservo.attach(13);
 }
 
 /* called once on mqtt message received */
 void neurite_user_mqtt(char *topic, byte *payload, unsigned int length)
 {
-#if 0
 	struct neurite_data_s *nd = &g_nd;
 	if (strncmp(topic, nd->topic_private, strlen(nd->topic_private) - 2) == 0) {
 		char *subtopic = topic + strlen(nd->topic_private) - 2;
@@ -1320,17 +1292,9 @@ void neurite_user_mqtt(char *topic, byte *payload, unsigned int length)
 			log_dbg("hit light, msg(value): %s(%d)\n\r", token, val);
 			analogWrite(14, val);
 		}
-	} else if (strcmp(token, "servo:") == 0) {
-		token = strtok(NULL, "\0");
-		if (token) {
-			int val = atoi(token);
-			log_dbg("hit servo, msg(value): %s(%d)\n\r", token, val);
-			myservo.write(val);
-		}
 	} else {
 	}
 	free(msg);
-#endif
 }
 
 /* time_ms: the time delta in ms of button press/release cycle. */
